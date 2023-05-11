@@ -1,0 +1,13 @@
+# PXE Linux Configuration file.
+
+set default=0
+set timeout=300
+
+menuentry "Install Fedora 37" {
+  linux {{ kernel }} inst.repo={{ repo }} inst.ks={{ kickstart }} ip=dhcp
+  initrd {{ initrd }}
+}
+
+menuentry "Boot from local drive" {
+  exit
+}
