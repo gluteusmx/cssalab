@@ -71,6 +71,11 @@
     - dhcpd
     - tftp
 
+- name: Copy student kickstart
+  copy:
+    src: ks.cfg
+    dest: "{{ http_docroot }}"
+
 - name: Add firewalld rules for PXE
   firewalld:
     port: "{{ item }}"
@@ -92,9 +97,9 @@
     path: /etc/squid/squid.conf
     line: "{{ item }}"
     state: present
-    with_items:
-      - "cache_dir ufs /var/spool/squid 10000 16 256"
-      - "maximum_object_size 2048 MB"
+  with_items:
+    - "cache_dir ufs /var/spool/squid 10000 16 256"
+    - "maximum_object_size 2048 MB"
         
 - name: Start Squid service
   service:
