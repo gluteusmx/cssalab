@@ -10,7 +10,7 @@ pxe_install_label: "Install Fedora 37"
 # Переменные для установки Fedora 37
 kernel: "images/fedora/vmlinuz"
 initrd: "images/fedora/initrd.img"
-repo: "https://mirror.yandex.ru/fedora/linux/releases/37/Everything/x86_64/"
+repo: "https://mirror.yandex.ru/fedora/linux/releases/37/Everything/x86_64/os"
 kickstart: ks.cfg
 
 # Переменные для DHCP сервера

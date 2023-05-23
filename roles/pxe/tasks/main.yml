@@ -16,11 +16,6 @@
     src: dhcpd.conf.j2
     dest: /etc/dhcp/dhcpd.conf
 
-#- name: Configure TFTP server
-#  template:
-#    src: tftp.j2
-#    dest: /etc/xinetd.d/tftp
-
 - name: Create tftp boot directory
   become: true
   file:
@@ -66,11 +61,11 @@
     src: httpd.conf.j2
     dest: /etc/httpd/conf.d/pxe.conf
 
-
 - name: Restart services
   systemd:
     name: "{{ item }}"
     state: restarted
+    enabled: true
   with_items:
     - httpd
     - dhcpd
@@ -86,3 +81,23 @@
     - 67/udp
     - 69/udp   # TFTP
     - 80/tcp # PXE HTTP
+
+- name: Install Squid
+  dnf:
+    name: squid
+    state: present
+
+- name: Configure Squid
+  lineinfile:
+    path: /etc/squid/squid.conf
+    line: "{{ item }}"
+    state: present
+    with_items:
+      - "cache_dir ufs /var/spool/squid 10000 16 256"
+      - "maximum_object_size 2048 MB"
+        
+- name: Start Squid service
+  service:
+    name: squid
+    state: started
+    enabled: yes
