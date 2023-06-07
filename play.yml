@@ -1,5 +1,5 @@
 - name: Configure PXE with iPXE bootloader
-  hosts: localhost
+  hosts: server
   become: true
   roles:
     - pxe

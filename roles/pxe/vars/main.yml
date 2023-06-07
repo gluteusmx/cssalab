@@ -11,7 +11,7 @@ pxe_install_label: "Install Fedora 37"
 kernel: "images/fedora/vmlinuz"
 initrd: "images/fedora/initrd.img"
 repo: "https://mirror.yandex.ru/fedora/linux/releases/37/Everything/x86_64/os"
-kickstart: "http://{{ http_servername}}/ks.cfg"
+kickstart: "http://{{ http_servername }}/ks/"
 
 # Переменные для DHCP сервера
 dhcp_subnet: "192.168.122.0"
@@ -19,7 +19,7 @@ dhcp_netmask: "255.255.255.0"
 dhcp_range_start: "192.168.122.100"
 dhcp_range_end: "192.168.122.200"
 dhcp_router: "192.168.122.1"
-dhcp_dns_server: "8.8.8.8"
+dhcp_dns_server: "192.168.122.77"
 
 
 

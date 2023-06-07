@@ -19,7 +19,7 @@
 - name: Create tftp boot directory
   become: true
   file:
-    path: "/var/lib/tftpboot/{{ item }}"
+    path: "{{ tftp_root }}/{{ item }}"
     state: directory
     mode: '0755'
   with_items:
@@ -31,12 +31,12 @@
 - name: Copy deps for bios boot
   copy:
     src: images/bios/
-    dest: /var/lib/tftpboot/images/bios/
+    dest: "{{ tftp_root }}/images/bios/"
 
 - name: Add boot images
   copy:
     src: "{{ item }}"
-    dest: "/var/lib/tftpboot/{{ item }}"
+    dest: "{{ tftp_root }}/{{ item }}"
   with_items:
     - images/bios/pxelinux.0
     - images/bios/ldlinux.c32
@@ -49,12 +49,24 @@
 - name: Create pxelinux.cfg/default file
   template:
     src: pxelinux.cfg.j2
-    dest: /var/lib/tftpboot/images/bios/pxelinux.cfg/default
+    dest: "{{ tftp_root }}/images/bios/pxelinux.cfg/default"
 
 - name: Create grub.cfg file
   template:
     src: grub.cfg.j2
-    dest: /var/lib/tftpboot/images/uefi/grub.cfg
+    dest: "{{ tftp_root }}/images/uefi/grub.cfg"
+
+- name: Add boot options for students installations
+  blockinfile:
+    path: "{{ tftp_root }}/images/uefi/grub.cfg"
+    insertafter: '^submenu*'
+    block: |
+      menuentry "Install {{ item }} student" {
+        linux {{ kernel }} inst.repo={{ repo }} inst.ks={{ kickstart }}/{{ item }}.cfg ip=dhcp
+        initrd {{ initrd }}
+      }
+    marker: "# {mark} ANSIBLE ADDED {{ item }} student"
+  with_sequence: start=24 end=1 stride=-1
 
 - name: Configure web server
   template:
@@ -71,10 +83,18 @@
     - dhcpd
     - tftp
 
-- name: Copy student kickstart
-  copy:
-    src: ks.cfg
-    dest: "{{ http_docroot }}"
+- name: Create kickstart directory
+  become: true
+  file:
+    path: "{{ http_docroot }}/ks"
+    state: directory
+    mode: '0755'
+
+- name: templating student kickstart
+  template:
+    src: ks.cfg.j2
+    dest: "{{ http_docroot }}/ks/{{ item}}.cfg"
+  with_sequence: start=1 end=24 stride=1 
 
 - name: Add firewalld rules for PXE
   firewalld:
@@ -106,3 +126,8 @@
     name: squid
     state: started
     enabled: yes
+
+- name: Share pubkey
+  copy: 
+    src: "~/.ssh/id_rsa.pub"
+    dest: "{{ http_docroot }}/key.pub"
