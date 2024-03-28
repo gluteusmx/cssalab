@@ -1,0 +1,30 @@
+---
+# Переменные для пути к корневой директории TFTP сервера и к файлу dhcpd.conf
+tftp_root: /var/lib/tftpboot
+tftp_servername: "10.2.16.199"
+
+# Переменные для PXE меню
+pxe_menu_title: "PXE Boot Menu"
+pxe_install_label: "Install Fedora 37"
+
+# Переменные для установки Fedora 37
+kernel: "images/fedora/vmlinuz"
+initrd: "images/fedora/initrd.img"
+repo: "https://mirror.yandex.ru/fedora/linux/releases/39/Everything/x86_64/os"
+kickstart: "http://{{ http_servername }}/ks/"
+
+# Переменные для DHCP сервера
+dhcp_subnet: "10.2.16.0"
+dhcp_netmask: "255.255.255.0"
+dhcp_range_start: "10.2.16.100"
+dhcp_range_end: "10.2.16.200"
+dhcp_router: "10.2.16.1"
+dhcp_dns_server: "8.8.8.8"
+
+
+
+
+# Переменные для HTTP сервера
+http_docroot: "/var/www/html"
+http_servername: "10.2.16.199"
+# Переменные для PXE меню

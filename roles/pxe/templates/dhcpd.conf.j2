@@ -1,0 +1,26 @@
+# DHCP Server Configuration file.
+
+# option definitions common to all supported networks...
+option domain-name ".local";
+option domain-name-servers {{ dhcp_dns_server }};
+option architecture-type code 93 = unsigned integer 16;
+
+default-lease-time 600;
+max-lease-time 7200;
+
+# PXE server subnet configuration
+subnet {{ dhcp_subnet }} netmask {{ dhcp_netmask }} {
+  range {{ dhcp_range_start }} {{ dhcp_range_end }};
+  option routers {{ dhcp_router }};
+  next-server {{ tftp_servername }};
+
+  # PXE boot file name for BIOS-based systems
+  filename "images/bios/pxelinux.0";
+
+  # PXE boot file name for UEFI-based systems
+  if option architecture-type = 00:07 {
+    filename "images/uefi/bootx64.efi";
+  } else {
+    filename "images/bios/pxelinux.0";
+  }
+}

@@ -1,0 +1,203 @@
+---
+# tasks file for virtualization
+- name: install dnf virt
+  dnf:
+    name: '@Virtualization,guestfs-tools'
+    state: latest
+    update_cache: true
+
+
+- name: Install docker 
+  dnf:
+    name: docker-ce,docker-ce-cli,containerd.io,docker-buildx-plugin,docker-compose-plugin
+    state: latest
+    update_cache: true
+
+
+- name: add student to libvirt
+  user:
+    name: student
+    groups: libvirt,docker
+
+- name: restart service libvirtd
+  systemd:
+    name: libvirtd
+    enabled: yes
+    state: started
+
+- name: Create iso dir
+  file:
+    state: directory
+    path: /home/student/iso
+    owner: student
+    group: qemu
+    mode: 0755
+
+- name: Copy iso images
+  copy:
+    src: "{{ item }}"
+    dest: /home/student/iso/
+  with_fileglob:
+  - "iso/*"
+
+
+- name: List all VMs
+  virt:
+    command: list_vms
+  register: all_vms
+
+- name: debug
+  debug: var=all_vms
+
+    #- name: stop all VMs
+    #  virt:
+    #    command: shutdown
+    #    name: "{{ item }}"
+    #  loop: "{{ all_vms.list_vms|flatten(levels=1) }}"
+    #  ignore_errors: yes
+
+    #- name: remove snaps
+    #  shell: "for i in $(virsh snapshot-list {{item}}| awk '{print $1}'|sed -e '1,2d'); do virsh snapshot-delete --domain {{item}} --snapshotname $i ; done"
+    #  loop: "{{ all_vms.list_vms|flatten(levels=1) }}"
+    #  ignore_errors: yes
+
+    #- name: undefine all VMs
+    #  community.libvirt.virt:
+    #    uri: qemu:///system
+    #    command: undefine
+    #    name: "{{ item }}"
+    #  loop: "{{ all_vms.list_vms|flatten(levels=1) }}"
+    #  ignore_errors: yes
+
+    #- name: And remove images...
+    #  file:
+    #    path: /var/lib/libvirt/images 
+    #    state: "{{ item }}"
+    #    mode: 0711
+    #    owner: root
+    #    group: root
+    #  loop:
+    #  - absent
+    #  - directory
+
+    #- name: List available networks
+    #  virt_net:
+    #    command: list_nets
+    #  register: all_nets
+
+    #- name: destroy networks...
+    #  virt_net:
+    #    command: destroy
+    #    name: "{{ item }}"
+    #  loop: "{{ all_nets.list_nets|flatten(levels=1) }}"
+    #  ignore_errors: yes
+
+    #- name: undefine networks...
+    #  virt_net:
+    #    command: destroy
+    #    name: "{{ item }}"
+    #  loop: "{{ all_nets.list_nets|flatten(levels=1) }}"
+    #  ignore_errors: yes
+
+- name: Copy images
+  copy:
+    src: "{{ item }}"
+    dest: /var/lib/libvirt/images 
+    mode: '0444'
+  with_fileglob:
+  - "images/*"
+
+- name: Define a template VM
+  community.libvirt.virt:
+    uri: qemu:///system
+    command: define
+    xml: "{{ lookup('template', 'xml/template.xml.j2') }}"
+  with_fileglob:
+  - "images/*" 
+
+- name: add func to bashrc for create_vm
+  blockinfile:
+    path: /home/student/.bashrc
+    block: |
+      function create_vm {
+          if [ "$1" == "-h" ] || [ "$(echo `sudo virsh list --all --name |grep template|awk -F '_' '{print $1}'| tr '\n' ','` | grep $1,)" = "" ] && [ "$2" == "" ]  ; then
+              echo "Usage: $FUNCNAME DISTRO VMNAME
+      example: $FUNCNAME centos8 student
+      All available DISTRO's is `sudo virsh list --all --name |grep template|awk -F '_' '{print $1}'| tr '\n' ','`"                                                           
+              return 0
+          fi
+          {
+          sudo virt-clone -o "$1"_template -n $2 -f /var/lib/libvirt/images/$2.qcow2 --connect qemu:///system
+          if [ "$?" -ne "0" ]
+          then
+              echo "Usage: $FUNCNAME DISTRO VMNAME
+      example: $FUNCNAME centos8 student
+      All available DISTRO's is `sudo virsh list --all --name |grep template|awk -F '_' '{print $1}'| tr '\n' ','`"
+              return 2
+          fi
+
+          sudo virt-sysprep -d $2 --connect qemu:///system
+          sudo virsh start --domain $2
+          if [ "$?" -ne "0" ]
+          then
+              echo something wrong
+              return 2
+          fi
+          } &>/dev/null
+          echo "Your VM is created and booting up, please wait untill finish"
+          sleep 15
+          ip=`sudo virsh domifaddr $2 |grep ipv4|awk '{print $4}' | awk -F '/' '{print $1}'`
+          echo "ip of your machine is: $ip 
+      try to connect via ssh with:
+      user: root\\student
+      password: 1\\student
+      example: ssh root@$ip
+      password: 1"
+      }
+
+      
+      
+- name: add student to sudoers
+  blockinfile:
+    create: true
+    path: /etc/sudoers.d/student
+    block: |
+      student ALL=(ALL:ALL) NOPASSWD: /usr/bin/virt-sysprep, /usr/bin/virt-clone, /usr/bin/virsh
+
+
+
+#- name: Define a debian VM
+#  community.libvirt.virt:
+#    command: define
+#    xml: "{{ lookup('template', 'files/debianVirt.xml') }}"
+
+#- name: Define a debian VM
+#  community.libvirt.virt:
+#    command: define
+#    xml: "{{ lookup('template', 'files/astraVirt.xml') }}"
+
+#- name: Delete Snapshots
+#  shell: virsh snapshot-delete --domain "{{ item }}" --snapshotname clear
+#  with_items:
+#  - astra1.6
+#  - centos-stream8
+#  - debian11
+
+#- name: Create Snapshots
+#  shell: virsh snapshot-create-as --domain "{{ item }}" --name clear
+#  with_items:
+#  - astra1.6
+#  - centos-stream8
+#  - debian11
+
+#- name: Copy revert script 
+#  copy:
+#    src: revertSnap.sh
+#    dest: /usr/bin/
+#    mode: 700
+
+#- name: Add Task to crontab
+#  cron:
+#    name: task to revert snapshots
+#    special_time: reboot
+#    job: /usr/bin/revertSnap.sh

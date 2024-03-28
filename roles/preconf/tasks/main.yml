@@ -1,0 +1,65 @@
+---
+# tasks file for user
+- name: create user student
+  user:
+    name: student
+    generate_ssh_key: yes
+    ssh_key_bits: 2048
+    ssh_key_file: .ssh/id_rsa
+    password: $y$j9T$FZU5CwBGUhiFXmTKo/rlZ/$Ig6r6r6atCDENqEVDog5qvQ5skrJAhBTPdl0d/r8epC
+
+- name: create ssh root dir
+  file:
+    path: /root/.ssh
+    state: directory
+    mode: '0600'
+
+- name: copy auth to root
+  copy:
+    src: /var/www/html/key.pub
+    dest: /root/.ssh/authorized_keys
+    owner: root
+    group: root
+    mode: u=rw,g-rwx,o-rwx
+
+- name: copy auth to student
+  copy:
+    src: /var/www/html/key.pub
+    dest: /home/student/.ssh/authorized_keys
+    owner: student
+    group: student
+    mode: u=rw,g-rwx,o-rwx
+
+- name: Add active addresses to persist conf
+  community.general.nmcli:
+    conn_name: 'connection'
+    ifname: eno1
+    type: ethernet
+    ip4: "{{ ansible_default_ipv4.address }}/{{ ansible_default_ipv4.prefix }}"
+    gw4: "{{ ansible_default_ipv4.gateway }}"
+    state: present
+    autoconnect: true
+    dns4:
+    - 8.8.4.4
+    - 1.1.1.1
+
+- name: remove old connection
+  community.general.nmcli:
+    conn_name: 'Проводное соединение 1'
+    state: absent
+
+- name: apply network
+  systemd:
+    name: NetworkManager
+    state: restarted
+
+- name: copy repo
+  synchronize:
+    src: /etc/yum.repos.d/
+    dest: /etc/yum.repos.d/
+
+#- name: install chrome and teams
+#  dnf:
+#    name: google-chrome-stable
+#    state: present
+#    update_cache: true

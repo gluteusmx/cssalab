@@ -1,0 +1,14 @@
+
+<VirtualHost *:80>
+    ServerName {{ ansible_fqdn }}
+    DocumentRoot /var/www/html
+
+    <Directory /var/www/html>
+        Options Indexes FollowSymLinks MultiViews
+        AllowOverride None
+        Require all granted
+    </Directory>
+
+    ErrorLog /var/log/httpd/pxe_error.log
+    CustomLog /var/log/httpd/pxe_access.log combined
+</VirtualHost>

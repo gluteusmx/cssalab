@@ -1,0 +1,54 @@
+text
+lang en_US.UTF-8
+keyboard us,ru --switch=grp:alt_shift_toggle
+timezone Europe/Moscow
+selinux --enforcing
+firewall --enabled --service=mdns,ssh
+services --enabled=sshd,NetworkManager,chronyd
+network --bootproto=dhcp --activate --hostname student{{ item }}
+rootpw locked 
+zerombr
+clearpart --linux
+ignoredisk --only-use=nvme0n1
+autopart
+repo --name=fedora --mirrorlist=https://mirrors.fedoraproject.org/mirrorlist?repo=fedora-$releasever&arch=$basearch
+repo --name=updates --mirrorlist=https://mirrors.fedoraproject.org/mirrorlist?repo=updates-released-f$releasever&arch=$basearch
+repo --name=google-chrome --baseurl=https://dl.google.com/linux/chrome/rpm/stable/x86_64 
+bootloader --location=mbr --append="rhgb quiet" --timeout=3 
+user --name linux-adm --iscrypted --password '$y$j9T$eD.VixkneDTCaY7gqizMw.$77f9OngC2Pjnxg4oiB6hxRXA5q1dwpzjogxrCuzPkj7' --groups wheel
+url --mirrorlist=https://mirrors.fedoraproject.org/mirrorlist?repo=fedora-$releasever&arch=$basearch
+
+reboot
+
+
+%packages
+@^kde-desktop-environment
+@development-tools
+@editors
+@core
+@standard
+ansible
+git
+wget
+curl
+google-chrome-stable
+wireshark
+nmap
+python3
+cmatrix
+#@hardware-support
+
+# make sure all the locales are available for inital-setup and anaconda to work
+#glibc-all-langpacks
+
+%end
+
+%post
+
+echo 'linux-adm ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/linux-adm
+passwd -e linux-adm
+sudo -u linux-adm ssh-keygen -b 2048 -t rsa  -q -N ""
+rm /etc/systemd/system/default.target 
+ln -s /usr/lib/systemd/system/graphical.target /etc/systemd/system/default.target
+curl http://{{ http_servername }}/key.pub >> /home/linux-adm/.ssh/authorized_keys 
+%end

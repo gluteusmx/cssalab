@@ -1,0 +1,8 @@
+- hosts: Server
+  become: true
+  become_method: sudo
+  collections:
+    - freeipa.ansible_freeipa
+  roles:
+    - freeipa_server
+

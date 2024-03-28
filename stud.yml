@@ -1,0 +1,6 @@
+- name: configure students with virt
+  hosts: students
+  become: true
+  roles:
+    - preconf
+    - virtualization

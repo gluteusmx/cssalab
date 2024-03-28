@@ -1,0 +1,132 @@
+---
+- name: Install necessary packages
+  dnf:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - syslinux
+    - shim-x64
+    - grub2-efi-x64
+    - tftp-server
+    - httpd
+    - dhcp-server
+
+- name: Configure DHCP server
+  template:
+    src: dhcpd.conf.j2
+    dest: /etc/dhcp/dhcpd.conf
+
+- name: Create tftp boot directory
+  become: true
+  file:
+    path: "{{ tftp_root }}/{{ item }}"
+    state: directory
+    mode: '0755'
+  with_items:
+    - images/uefi
+    - images/bios
+    - images/fedora/
+    - images/bios/pxelinux.cfg
+
+- name: Copy deps for bios boot
+  copy:
+    src: images/bios/
+    dest: "{{ tftp_root }}/images/bios/"
+
+- name: Add boot images
+  copy:
+    src: "{{ item }}"
+    dest: "{{ tftp_root }}/{{ item }}"
+  with_items:
+    - images/bios/pxelinux.0
+    - images/bios/ldlinux.c32
+    - images/uefi/bootx64.efi
+    - images/uefi/ldlinux.e64
+    - images/uefi/grubx64.efi
+    - images/fedora/vmlinuz
+    - images/fedora/initrd.img
+
+- name: Create pxelinux.cfg/default file
+  template:
+    src: pxelinux.cfg.j2
+    dest: "{{ tftp_root }}/images/bios/pxelinux.cfg/default"
+
+- name: Create grub.cfg file
+  template:
+    src: grub.cfg.j2
+    dest: "{{ tftp_root }}/images/uefi/grub.cfg"
+
+- name: Add boot options for students installations
+  blockinfile:
+    path: "{{ tftp_root }}/images/uefi/grub.cfg"
+    insertafter: '^submenu*'
+    block: |
+      menuentry "Install {{ item }} student" {
+        linux {{ kernel }} inst.repo={{ repo }} inst.ks={{ kickstart }}/{{ item }}.cfg ip=dhcp
+        initrd {{ initrd }}
+      }
+    marker: "# {mark} ANSIBLE ADDED {{ item }} student"
+  with_sequence: start=27 end=1 stride=-1
+
+- name: Configure web server
+  template:
+    src: httpd.conf.j2
+    dest: /etc/httpd/conf.d/pxe.conf
+
+- name: Restart services
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+    enabled: true
+  with_items:
+    - httpd
+    - tftp
+
+- name: Create kickstart directory
+  become: true
+  file:
+    path: "{{ http_docroot }}/ks"
+    state: directory
+    mode: '0755'
+
+- name: templating student kickstart
+  template:
+    src: ks.cfg.j2
+    dest: "{{ http_docroot }}/ks/{{ item}}.cfg"
+  with_sequence: start=1 end=27 stride=1 
+
+- name: Add firewalld rules for PXE
+  firewalld:
+    port: "{{ item }}"
+    permanent: yes
+    state: enabled
+    immediate: true
+  loop:
+    - 67/udp
+    - 69/udp   # TFTP
+    - 80/tcp # PXE HTTP
+
+- name: Install Squid
+  dnf:
+    name: squid
+    state: present
+
+#- name: Configure Squid
+#  lineinfile:
+#    path: /etc/squid/squid.conf
+#    line: "{{ item }}"
+#    state: present
+#  with_items:
+#    - "cache_dir ufs /var/spool/squid 10000 16 256"
+#    - "maximum_object_size 2048 MB"
+        
+#- name: Start Squid service
+#  service:
+#    name: squid
+#    state: started
+#    enabled: yes
+
+- name: Share pubkey
+  copy: 
+    src: "~/.ssh/id_ed25519.pub"
+    dest: "{{ http_docroot }}/key.pub"

@@ -1,0 +1,16 @@
+# PXE Linux Configuration file.
+
+DEFAULT menu
+PROMPT 0
+TIMEOUT 300
+
+MENU TITLE Fedora 37 Installation
+
+LABEL linux
+    MENU LABEL Install Fedora 37
+    KERNEL ../../{{ kernel }}
+    APPEND initrd=../../{{ initrd }} inst.repo={{ repo }} inst.ks={{ kickstart }} ip=dhcp
+
+LABEL local
+    MENU LABEL Boot from local drive
+    LOCALBOOT 0
